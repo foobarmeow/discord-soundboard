@@ -18,6 +18,7 @@ import (
 )
 
 var vc *discordgo.VoiceConnection
+var playing bool
 
 type Sound struct {
 	Name string
@@ -60,6 +61,13 @@ func main() {
 }
 
 func play(w http.ResponseWriter, r *http.Request) {
+	if playing {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	playing = true
+
 	name := r.URL.Query().Get("name")
 
 	sound, err := loadSound(name)
@@ -76,6 +84,7 @@ func play(w http.ResponseWriter, r *http.Request) {
 	}
 
 	vc.Speaking(false)
+	playing = false
 }
 
 func upload(w http.ResponseWriter, r *http.Request) {
