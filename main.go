@@ -13,8 +13,10 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path"
 	"strings"
+	"syscall"
 )
 
 var vc *discordgo.VoiceConnection
@@ -57,7 +59,13 @@ func main() {
 	http.HandleFunc("/play", play)
 
 	log.Println("Listening on", port)
-	log.Fatal(http.ListenAndServe(port, nil))
+	go http.ListenAndServe(port, nil)
+
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
+	<-sc
+	vc.Disconnect()
+	session.Close()
 }
 
 func play(w http.ResponseWriter, r *http.Request) {
