@@ -33,13 +33,26 @@ func main() {
 	guild := flag.String("server", "", "server id")
 	channel := flag.String("channel", "", "channel id")
 	token := flag.String("token", "", "token")
+	httponly := flag.Bool("httponly", false, "only start server")
 
 	flag.Parse()
 
+	http.HandleFunc("/", indexPage)
+	http.HandleFunc("/upload", upload)
+	http.HandleFunc("/play", play)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
 	})
+
+	log.Println("Listening on", port)
+
+	if *httponly {
+		http.ListenAndServe(port, nil)
+		return
+	}
+
+	go http.ListenAndServe(port, nil)
 
 	// setup discord session
 	session, err := discordgo.New("Bot " + *token)
@@ -53,14 +66,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	http.HandleFunc("/", indexPage)
-	http.HandleFunc("/upload", upload)
-	http.HandleFunc("/play", play)
-
-	log.Println("Listening on", port)
-	go http.ListenAndServe(port, nil)
-
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc

@@ -47,8 +47,9 @@
     <body>
         <div class='nav'>
             <a href='/upload'>Upload Sound</a>
+            <input style="float:right" type="text" oninput="filter(this.value)" placeholder="Filter Sounds" />
         </div>
-        <ul class="sounds">
+        <ul class="sounds" id="sounds">
         {{ range .Sounds }}
             <li onclick="play('{{ .Name }}')" class="sound">
                 <span>{{ .Name }}</span>
@@ -58,6 +59,7 @@
         </ul>
         <script>
             var playing = false
+
             function play(name) {
                 // Request to /play?name=name
                 if (playing) return
@@ -71,6 +73,23 @@
                     console.error(e)
                 })
             }  
+
+            function filter(term) {
+                // Find all elements
+                const el = document.getElementById("sounds")
+                const list = [].slice.call(el.children)
+
+                if (term == "") {
+                    list.forEach(i => i.style.display = "inline-block")
+                    return
+                }
+
+                list.forEach(i => {
+                    if (i.innerText.indexOf(term) < 0) {
+                        i.style.display = "none"
+                    }
+                })
+            }
         </script>
     </body>
 </html>
