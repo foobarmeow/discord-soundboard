@@ -85,7 +85,7 @@
                 }
 
                 list.forEach(i => {
-                    if (i.innerText.indexOf(term) < 0) {
+                    if (i.innerText.toLowerCase().indexOf(term.toLowerCase()) < 0) {
                         i.style.display = "none"
                     }
                 })
