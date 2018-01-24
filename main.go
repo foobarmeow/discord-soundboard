@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"sort"
 	"strings"
 	"syscall"
 )
@@ -26,6 +27,12 @@ type Sound struct {
 	Name string
 	Type string
 }
+
+type Sounds []Sound
+
+func (s Sounds) Len() int           { return len(s) }
+func (s Sounds) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Sounds) Less(i, j int) bool { return strings.ToLower(s[i].Name) < strings.ToLower(s[j].Name) }
 
 func main() {
 	var port string = ":9076"
@@ -147,7 +154,7 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 
 	// Define IndexPage struct for use in template
 	type IndexPage struct {
-		Sounds []Sound
+		Sounds Sounds
 	}
 
 	defer r.Body.Close()
@@ -160,11 +167,13 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sounds := []Sound{}
+	sounds := Sounds{}
 
 	for i := range files {
 		sounds = append(sounds, Sound{Name: strings.TrimSuffix(files[i].Name(), ".dca")})
 	}
+
+	sort.Sort(sounds)
 
 	page := IndexPage{
 		Sounds: sounds,
