@@ -1,6 +1,10 @@
 {{ define "index" }}
 <html>
     <head>
+		<script
+  src="https://code.jquery.com/jquery-3.3.1.slim.min.js"
+  integrity="sha256-3edrmyuQ0w65f8gfBsqowzjJe2iM6n0nKciPUp8y+7E="
+  crossorigin="anonymous"></script>
         <title>Soundboard</title>
         <style>
             html, body {
@@ -47,7 +51,7 @@
     <body>
         <div class='nav'>
             <a href='/upload'>Upload Sound</a>
-            <input style="float:right" type="text" oninput="filter(this.value)" placeholder="Filter Sounds" />
+            <input id="filter" style="float:right" type="text" placeholder="Filter Sounds" />
         </div>
         <ul class="sounds" id="sounds">
         {{ range .Sounds }}
@@ -74,10 +78,11 @@
                 })
             }  
 
-            function filter(term) {
+			$('#filter').bind('DOMAttrModified textInput input change keypress paste focus', function () {
                 // Find all elements
                 const el = document.getElementById("sounds")
                 const list = [].slice.call(el.children)
+				const term = this.value
 
                 if (term == "") {
                     list.forEach(i => i.style.display = "inline-block")
@@ -89,7 +94,7 @@
                         i.style.display = "none"
                     }
                 })
-            }
+			});
         </script>
     </body>
 </html>
