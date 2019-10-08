@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"github.com/go-redis/redis"
+	"github.com/google/uuid"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -15,11 +17,13 @@ import (
 	"os/exec"
 	"os/signal"
 	"path"
+	"sort"
 	"strings"
 	"syscall"
 )
 
 var vc *discordgo.VoiceConnection
+var rc *redis.Client
 var playing bool
 
 type Sound struct {
@@ -27,8 +31,20 @@ type Sound struct {
 	Type string
 }
 
+type Sounds []Sound
+
+func (s Sounds) Len() int           { return len(s) }
+func (s Sounds) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s Sounds) Less(i, j int) bool { return strings.ToLower(s[i].Name) < strings.ToLower(s[j].Name) }
+
 func main() {
 	var port string = ":9076"
+
+	rc = redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379", // use default Addr
+		Password: "",               // no password set
+		DB:       0,                // use default DB
+	})
 
 	guild := flag.String("server", "", "server id")
 	channel := flag.String("channel", "", "channel id")
@@ -40,6 +56,7 @@ func main() {
 	http.HandleFunc("/", indexPage)
 	http.HandleFunc("/upload", upload)
 	http.HandleFunc("/play", play)
+	http.HandleFunc("/favorite", favorite)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		w.WriteHeader(http.StatusOK)
@@ -100,6 +117,56 @@ func play(w http.ResponseWriter, r *http.Request) {
 	playing = false
 }
 
+func favorite(w http.ResponseWriter, r *http.Request) {
+	// Get session ID cookie
+	var sessionID string
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if sessionCookie == nil {
+		sessionID = uuid.New().String()
+	} else {
+		sessionID = sessionCookie.Value
+	}
+
+	name := r.URL.Query().Get("name")
+	if name == "" {
+		log.Println(err)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	// See if this already exists in the session's favorites set
+	exists, err := rc.SIsMember(fmt.Sprintf("favorites:%s", sessionID), name).Result()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	if exists {
+		_, err = rc.SRem(fmt.Sprintf("favorites:%s", sessionID), name).Result()
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	_, err = rc.SAdd(fmt.Sprintf("favorites:%s", sessionID), name).Result()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+}
+
 func upload(w http.ResponseWriter, r *http.Request) {
 
 	defer r.Body.Close()
@@ -144,10 +211,29 @@ func upload(w http.ResponseWriter, r *http.Request) {
 }
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
+	// Set the session cookie if it's not present
+	sessionCookie, err := r.Cookie("session")
+	if err != nil {
+		http.SetCookie(w, &http.Cookie{
+			Name:  "session",
+			Value: uuid.New().String(),
+		})
+	}
+
+	_ = sessionCookie
+
+	// Read the favorites from redis
+	favorites, err := rc.SMembers(fmt.Sprintf("favorites:%s", sessionCookie.Value)).Result()
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 
 	// Define IndexPage struct for use in template
 	type IndexPage struct {
-		Sounds []Sound
+		Sounds    Sounds
+		Favorites Sounds
 	}
 
 	defer r.Body.Close()
@@ -160,14 +246,25 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sounds := []Sound{}
+	sounds := Sounds{}
 
 	for i := range files {
 		sounds = append(sounds, Sound{Name: strings.TrimSuffix(files[i].Name(), ".dca")})
 	}
 
+	sort.Sort(sounds)
+
 	page := IndexPage{
 		Sounds: sounds,
+	}
+
+	// Form favorites
+	for _, s := range sounds {
+		for _, f := range favorites {
+			if s.Name == f {
+				page.Favorites = append(page.Favorites, s)
+			}
+		}
 	}
 
 	// Load Template

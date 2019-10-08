@@ -23,27 +23,45 @@
             .nav a:visited { color: black; text-decoration: none;}
             .nav a:active { color: red; text-decoration: none;}
             .nav a:link { color: black; text-decoration: none;}
-            .sounds {
-                -webkit-user-select: none;  /* Chrome all / Safari all */
-                -moz-user-select: none;     /* Firefox all */
-                -ms-user-select: none;      /* IE 10+ */
-                user-select: none;  
-                margin: 0 auto;
-                padding: 0;
-            }
+
+			.wrapper {
+			}
+
+			.favorites {
+				float: left;
+			}
+			.favorites ul {
+				display: flex;
+				flex-flow: column;
+			}
+
+			.sounds {
+				display: flex;
+				flex-flow: row wrap;
+			}
+
+			.wrapper ul {
+				margin: 0;
+				padding: 0;
+			}
+
             .sound {
                 cursor: pointer;
                 font-size: 20px;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
                 transition: all 0.3s cubic-bezier(.25,.8,.25,1);
-                padding: 50px;
+                padding: 10px;
                 margin: 5px;
                 list-style-type: none;
-                display: inline-block;
             }
             .sound:hover {
                 box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
             }
+
+			.favorites-header {
+				text-align: center;
+				border-bottom: 1px solid black;
+			}
         </style>
                 
             
@@ -53,14 +71,29 @@
             <a href='/upload'>Upload Sound</a>
             <input id="filter" style="float:right" type="text" placeholder="Filter Sounds" />
         </div>
-        <ul class="sounds" id="sounds">
-        {{ range .Sounds }}
-            <li onclick="play('{{ .Name }}')" class="sound">
-                <span>{{ .Name }}</span>
-            </li>
-        {{ end }}
-
-        </ul>
+		<div class="wrapper">
+			{{ if gt (len .Favorites) 0 }} 
+			<div class="favorites">
+				<span class="favorites-header">Favorites</span>
+				<ul>
+				{{ range .Favorites }}
+					<li onclick="play('{{ .Name }}')" class="sound">
+						<span>{{ .Name }}</span>
+						<span onclick="event.stopPropagation(); favorite('{{ .Name }}')">-</span>
+					</li>
+				{{ end }}
+				</ul>
+			</div>
+			{{ end }}
+			<ul class="sounds" id="sounds">
+			{{ range .Sounds }}
+				<li onclick="play('{{ .Name }}')" class="sound">
+					<span>{{ .Name }}</span>
+					<span onclick="event.stopPropagation(); favorite('{{ .Name }}')">+</span>
+				</li>
+			{{ end }}
+			</ul>
+		</div>
         <script>
             var playing = false
 
@@ -95,6 +128,17 @@
                     }
                 })
 			});
+
+			function favorite(name) {
+                fetch(`/favorite?name=${name}`)
+                .catch(e =>{
+                    playing = false
+                    console.error(e)
+                })
+				.then(() => {
+					window.location.reload()
+				})
+			}
         </script>
     </body>
 </html>
