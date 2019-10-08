@@ -212,18 +212,20 @@ func upload(w http.ResponseWriter, r *http.Request) {
 
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	// Set the session cookie if it's not present
+	var sessionID string
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
+		sessionID = uuid.New().String()
 		http.SetCookie(w, &http.Cookie{
 			Name:  "session",
-			Value: uuid.New().String(),
+			Value: sessionID,
 		})
+	} else {
+		sessionID = sessionCookie.Value
 	}
 
-	_ = sessionCookie
-
 	// Read the favorites from redis
-	favorites, err := rc.SMembers(fmt.Sprintf("favorites:%s", sessionCookie.Value)).Result()
+	favorites, err := rc.SMembers(fmt.Sprintf("favorites:%s", sessionID)).Result()
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
