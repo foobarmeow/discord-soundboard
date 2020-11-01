@@ -10,7 +10,7 @@
   version = "v0.19.0"
 
 [[projects]]
-  digest = "1:b46f50677ef33284ebde2b285a42b707ff9e1de1f37328d91869859c929ebbd2"
+  digest = "1:456f515a80bcc5c5d99beaee2dcb0d0598b6d4d02df804ac958f0e6e51d8e8d5"
   name = "github.com/go-redis/redis"
   packages = [
     ".",
@@ -22,28 +22,44 @@
     "internal/util",
   ]
   pruneopts = "UT"
-  revision = "7f69d5e32072d151eb6936cbe2306413e8117488"
-  version = "v6.15.6"
+  revision = "16ab0f2ac309166bfef5cde51742f84c61c1e73c"
+  version = "v6.15.9"
 
 [[projects]]
-  digest = "1:582b704bebaa06b48c29b0cec224a6058a09c86883aaddabde889cd1a5f73e1b"
+  digest = "1:ffe5ba52b122a56df4f9854ea2918e0d9f86e74919db63dc138f8fee3253d3d6"
   name = "github.com/google/uuid"
   packages = ["."]
   pruneopts = "UT"
-  revision = "0cd6bf5da1e1c83f8b45653022c74f71af0538a4"
-  version = "v1.1.1"
+  revision = "0e4e31197428a347842d152773b4cace4645ca25"
+  version = "v1.1.2"
 
 [[projects]]
-  digest = "1:e62657cca9badaa308d86e7716083e4c5933bb78e30a17743fc67f50be26f6f4"
+  digest = "1:6d29f02f0f01c627c2be40fb7347669a9ff2aa215cb97747294c1d13ffa74bdd"
   name = "github.com/gorilla/websocket"
   packages = ["."]
   pruneopts = "UT"
-  revision = "c3e18be99d19e6b3e8f1559eea2c161a665c4b6b"
-  version = "v1.4.1"
+  revision = "b65e62901fc1c0d968042419e74789f6af455eb9"
+  version = "v1.4.2"
 
 [[projects]]
   branch = "master"
-  digest = "1:e29c6fd0d02e2eef9fe4594b8baaf884ed54c03fd3b2d465a416a9cb49d6c609"
+  digest = "1:6f3e9ec3cbc976219fd3aa3f13479aa35b2b6c16a3bfd92f600f37e3f611c0de"
+  name = "github.com/jonas747/dca"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "fe85ccf0947afd77d5b0f67adfa6e8615d6dd9ed"
+
+[[projects]]
+  branch = "master"
+  digest = "1:2cedd8c2a2b53319becef11267df01249a95b1611b7e73b01c0cabbf6db785c0"
+  name = "github.com/jonas747/ogg"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "b4f6f4cf3757a3bf88eae9222045b99b9d76d8ca"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1714bd928fd176237ccdea21695bf72801c1ee5f51bccefb69b87f0fd376a6aa"
   name = "golang.org/x/crypto"
   packages = [
     "internal/subtle",
@@ -52,15 +68,15 @@
     "salsa20/salsa",
   ]
   pruneopts = "UT"
-  revision = "34f69633bfdcf9db92f698f8487115767eebef81"
+  revision = "84dcc777aaee85807c99afb056f496a3a8b3d8de"
 
 [[projects]]
   branch = "master"
-  digest = "1:95abab3e07422980e85e253e49eb75c05c1dee6e84b50cb0d3353747ef8099eb"
+  digest = "1:c3aea81ea905b10d7dc096be4b2b594cc96468ccce9506b093729149f2ff72c9"
   name = "golang.org/x/sys"
   packages = ["cpu"]
   pruneopts = "UT"
-  revision = "543471e840be449c53d44b32c7adf1261ad67e37"
+  revision = "2da7054afaeb62259b1cc931cdaca533392f2c77"
 
 [solve-meta]
   analyzer-name = "dep"
@@ -69,6 +85,7 @@
     "github.com/bwmarrin/discordgo",
     "github.com/go-redis/redis",
     "github.com/google/uuid",
+    "github.com/jonas747/dca",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
