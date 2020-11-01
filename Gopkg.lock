@@ -2,12 +2,12 @@
 
 
 [[projects]]
-  digest = "1:fc4f149402c1fa7258290c3f91b0bfbc709763f3d3899609a2e4a0163dec65c6"
+  digest = "1:99c79dc08249968d203bf4210220c01bd8250301600f5daf0a81f4c5f184f8d9"
   name = "github.com/bwmarrin/discordgo"
   packages = ["."]
   pruneopts = "UT"
-  revision = "8325a6bf6dd6c91ed4040a1617b07287b8fb0eba"
-  version = "v0.19.0"
+  revision = "befbea878e0f1d0bb21be6723b6cf6db2689f6a8"
+  version = "v0.22.0"
 
 [[projects]]
   digest = "1:456f515a80bcc5c5d99beaee2dcb0d0598b6d4d02df804ac958f0e6e51d8e8d5"
@@ -68,15 +68,15 @@
     "salsa20/salsa",
   ]
   pruneopts = "UT"
-  revision = "84dcc777aaee85807c99afb056f496a3a8b3d8de"
+  revision = "9e8e0b390897c84cad53ebe9ed2d1d331a5394d9"
 
 [[projects]]
   branch = "master"
-  digest = "1:c3aea81ea905b10d7dc096be4b2b594cc96468ccce9506b093729149f2ff72c9"
+  digest = "1:2774f08af92ca0b6d5e5727253762e8c1c1d908a6e7d795506b6cefa38ae1b58"
   name = "golang.org/x/sys"
   packages = ["cpu"]
   pruneopts = "UT"
-  revision = "2da7054afaeb62259b1cc931cdaca533392f2c77"
+  revision = "da207088b7d1961c44ec61e9dc15a73745693ab6"
 
 [solve-meta]
   analyzer-name = "dep"
