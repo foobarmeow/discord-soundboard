@@ -3,10 +3,12 @@ package main
 import (
 	"encoding/binary"
 	"flag"
+	"time"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-redis/redis"
 	"github.com/google/uuid"
+	"github.com/jonas747/dca"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -14,7 +16,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"os"
-	"os/exec"
+	//"os/exec"
 	"os/signal"
 	"path"
 	"sort"
@@ -77,6 +79,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	session.Debug = true
+
 	session.Open()
 
 	vc, err = session.ChannelVoiceJoin(*guild, *channel, false, true)
@@ -96,24 +100,44 @@ func play(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	playing = true
 
 	name := r.URL.Query().Get("name")
 
-	sound, err := loadSound(name)
+	file, err := os.Open(path.Join("sounds", name+".dca"))
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error getting file: %v\n", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	playing = true
+	defer func() {
+		playing = false
+	}()
 
-	vc.Speaking(true)
+	decoder := dca.NewDecoder(file)
 
-	for _, b := range sound {
-		vc.OpusSend <- b
+	for {
+		frame, err := decoder.OpusFrame()
+		if err != nil {
+			if err != io.EOF {
+				// Handle the error
+				log.Printf("Error getting frame: %v\n", err)
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			break
+		}
+
+		select{
+			case vc.OpusSend <- frame:
+			case <-time.After(time.Second):
+				log.Println("Sending frame timed out")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+		}
 	}
 
-	vc.Speaking(false)
 	playing = false
 }
 
@@ -339,12 +363,18 @@ func saveSound(file multipart.File, filename, soundname string) error {
 		return err
 	}
 
+	encodeSession, err := dca.EncodeFile(p, dca.StdEncodeOptions)
+	if err != nil {
+		return err
+	}
+	defer encodeSession.Cleanup()
+
 	target := path.Join("sounds", soundname+".dca")
-	cmd := fmt.Sprintf("ffmpeg -i %v -f s16le -ar 48000 -ac 2 pipe:1 | dca > %v", p, target)
-	_, err = exec.Command("bash", "-c", cmd).Output()
+	output, err := os.Create(target)
 	if err != nil {
 		return err
 	}
 
+	io.Copy(output, encodeSession)
 	return nil
 }
