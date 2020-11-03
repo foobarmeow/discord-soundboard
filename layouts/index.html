@@ -40,6 +40,14 @@
 				flex-flow: row wrap;
 			}
 
+			.sounds-table {
+				padding: 10px;
+			}
+
+			.sound-cell {
+				padding: 2px 20px;
+			}
+
 			.wrapper ul {
 				margin: 0;
 				padding: 0;
@@ -85,14 +93,14 @@
 				</ul>
 			</div>
 			{{ end }}
-			<ul class="sounds" id="sounds">
+			<table class="sounds-table">
 			{{ range .Sounds }}
-				<li onclick="play('{{ .Name }}')" class="sound">
-					<span>{{ .Name }}</span>
-					<span onclick="event.stopPropagation(); favorite('{{ .Name }}')">+</span>
-				</li>
+				<tr onclick="play('{{ .Name }}')" class="sound">
+					<td class="sound-cell">{{ .Name }}</td>
+					<td class="sound-cell" onclick="event.stopPropagation(); favorite('{{ .Name }}')">+</td>
+				</tr>
 			{{ end }}
-			</ul>
+			</table>
 		</div>
         <script>
             var playing = false
