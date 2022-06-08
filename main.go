@@ -27,6 +27,7 @@ import (
 var vc *discordgo.VoiceConnection
 var rc *redis.Client
 var playing bool
+var playChan chan [][]byte
 
 type Sound struct {
 	Name string
@@ -57,7 +58,7 @@ func main() {
 
 	http.HandleFunc("/", indexPage)
 	http.HandleFunc("/upload", upload)
-	http.HandleFunc("/play", play)
+	http.HandleFunc("/play", handlePlay)
 	http.HandleFunc("/favorite", favorite)
 	http.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -73,6 +74,9 @@ func main() {
 
 	go http.ListenAndServe(port, nil)
 
+	playChan = make(chan [][]byte)
+	go listenForPlays(playChan)
+
 	// setup discord session
 	session, err := discordgo.New("Bot " + *token)
 	if err != nil {
@@ -87,6 +91,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	play("Computer-Has-A-Mind-Of-Its-Own")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
@@ -94,51 +99,69 @@ func main() {
 	session.Close()
 }
 
-func play(w http.ResponseWriter, r *http.Request) {
-	if playing {
-		w.WriteHeader(http.StatusServiceUnavailable)
-		return
-	}
-
-
-	name := r.URL.Query().Get("name")
-
-	file, err := os.Open(path.Join("sounds", name+".dca"))
-	if err != nil {
-		log.Printf("Error getting file: %v\n", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	playing = true
-	defer func() {
-		playing = false
-	}()
-
-	decoder := dca.NewDecoder(file)
-
-	for {
-		frame, err := decoder.OpusFrame()
-		if err != nil {
-			if err != io.EOF {
-				// Handle the error
-				log.Printf("Error getting frame: %v\n", err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+func listenForPlays(playChan chan [][]byte) {
+	play := func(frames [][]byte) chan bool {
+		cancelChannel := make(chan bool)
+		go func(frames [][]byte) {
+		frameLoop:
+			for _, frame := range frames {
+				select{
+					case vc.OpusSend <- frame:
+					case <- cancelChannel:
+						break frameLoop
+					case <-time.After(time.Second):
+						log.Println("Sending frame timed out")
+						return
+				}
 			}
-
-			break
-		}
-
-		select{
-			case vc.OpusSend <- frame:
-			case <-time.After(time.Second):
-				log.Println("Sending frame timed out")
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-		}
+		}(frames)
+		return cancelChannel
 	}
 
-	playing = false
+
+	var cancel chan bool
+	for {
+		select {
+			case frames := <-playChan:
+				select {
+					case cancel <- true:
+						cancel = play(frames)
+					default:
+						cancel = play(frames)
+				}
+		}
+	}
+}
+
+func handlePlay(w http.ResponseWriter, r *http.Request) {
+	name := r.URL.Query().Get("name")
+	go play(name)
+}
+
+func play(name string) {
+		file, err := os.Open(path.Join("sounds", name+".dca"))
+		if err != nil {
+			log.Printf("Error getting file: %v\n", err)
+			return
+		}
+
+		decoder := dca.NewDecoder(file)
+
+		frames := [][]byte{}
+		for {
+			frame, err := decoder.OpusFrame()
+			if err != nil {
+				if err != io.EOF {
+					// Handle the error
+					log.Printf("Error getting frame: %v\n", err)
+					return
+				}
+
+				break
+			}
+			frames = append(frames, frame)
+		}
+		playChan <- frames
 }
 
 func favorite(w http.ResponseWriter, r *http.Request) {
@@ -237,12 +260,14 @@ func upload(w http.ResponseWriter, r *http.Request) {
 func indexPage(w http.ResponseWriter, r *http.Request) {
 	// Set the session cookie if it's not present
 	var sessionID string
+	expiry := time.Date(3001, 1, 1, 1, 1, 1, 1, time.UTC)
 	sessionCookie, err := r.Cookie("session")
 	if err != nil {
 		sessionID = uuid.New().String()
 		http.SetCookie(w, &http.Cookie{
 			Name:  "session",
 			Value: sessionID,
+			Expires: expiry,
 		})
 	} else {
 		sessionID = sessionCookie.Value

@@ -103,18 +103,10 @@
 			</table>
 		</div>
         <script>
-            var playing = false
-
             function play(name) {
                 // Request to /play?name=name
-                if (playing) return
-                playing = true
                 fetch(`/play?name=${name}`)
-                .then(() => {
-                    playing = false
-                })
                 .catch(e =>{
-                    playing = false
                     console.error(e)
                 })
             }  
