@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"flag"
 	"time"
 	"fmt"
@@ -68,6 +67,8 @@ func main() {
 
 	go http.ListenAndServe(port, nil)
 
+	soundCache = map[string][][]byte{}
+
 	playChan = make(chan [][]byte)
 	go listenForPlays(playChan)
 
@@ -100,9 +101,9 @@ func listenForPlays(playChan chan [][]byte) {
 		frameLoop:
 			for _, frame := range frames {
 				select{
-					case vc.OpusSend <- frame:
 					case <- cancelChannel:
 						break frameLoop
+					case vc.OpusSend <- frame:
 					case <-time.After(time.Second):
 						log.Println("Sending frame timed out")
 						return
@@ -115,14 +116,12 @@ func listenForPlays(playChan chan [][]byte) {
 
 	var cancel chan bool
 	for {
+		frames := <-playChan
 		select {
-			case frames := <-playChan:
-				select {
-					case cancel <- true:
-						cancel = play(frames)
-					default:
-						cancel = play(frames)
-				}
+			case cancel <- true:
+				cancel = play(frames)
+			default:
+				cancel = play(frames)
 		}
 	}
 }
@@ -133,14 +132,22 @@ func handlePlay(w http.ResponseWriter, r *http.Request) {
 }
 
 func play(name string) {
+		if s, ok := soundCache[name]; ok {
+			playChan <- s
+			return
+		}
+	
+		s := time.Now()
 		file, err := os.Open(path.Join("sounds", name+".dca"))
 		if err != nil {
 			log.Printf("Error getting file: %v\n", err)
 			return
 		}
+		fmt.Println("READ TOOK", time.Since(s))
 
 		decoder := dca.NewDecoder(file)
 
+		s = time.Now()
 		frames := [][]byte{}
 		for {
 			frame, err := decoder.OpusFrame()
@@ -155,6 +162,10 @@ func play(name string) {
 			}
 			frames = append(frames, frame)
 		}
+		fmt.Println("DECODE TOOK", time.Since(s))
+		
+		soundCache[name] = frames
+
 		playChan <- frames
 }
 
