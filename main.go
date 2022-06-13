@@ -19,7 +19,6 @@ import (
 	//"os/exec"
 	"os/signal"
 	"path"
-	"sort"
 	"strings"
 	"syscall"
 )
@@ -28,17 +27,12 @@ var vc *discordgo.VoiceConnection
 var rc *redis.Client
 var playing bool
 var playChan chan [][]byte
+var soundCache map[string][][]byte
 
 type Sound struct {
 	Name string
 	Type string
 }
-
-type Sounds []Sound
-
-func (s Sounds) Len() int           { return len(s) }
-func (s Sounds) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s Sounds) Less(i, j int) bool { return strings.ToLower(s[i].Name) < strings.ToLower(s[j].Name) }
 
 func main() {
 	var port string = ":9076"
@@ -281,10 +275,22 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	favoritesMap := map[string]string{}
+	for _, f := range favorites {
+		favoritesMap[f] = f
+	}
+
+
+
+	type SoundCollection struct {
+			Alpha string
+			Sounds []Sound
+	}
+
 	// Define IndexPage struct for use in template
 	type IndexPage struct {
-		Sounds    Sounds
-		Favorites Sounds
+		SoundMap map[string] SoundCollection
+		Favorites []Sound
 	}
 
 	defer r.Body.Close()
@@ -297,23 +303,24 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sounds := Sounds{}
+	page := IndexPage{
+		SoundMap: map[string]SoundCollection{},
+	}
 
 	for i := range files {
-		sounds = append(sounds, Sound{Name: strings.TrimSuffix(files[i].Name(), ".dca")})
-	}
+		a := strings.ToLower(string(files[i].Name()[0]))
+		s := Sound{Name: strings.TrimSuffix(files[i].Name(), ".dca")}
 
-	sort.Sort(sounds)
-
-	page := IndexPage{
-		Sounds: sounds,
-	}
-
-	// Form favorites
-	for _, s := range sounds {
-		for _, f := range favorites {
-			if s.Name == f {
-				page.Favorites = append(page.Favorites, s)
+		if _, ok := favoritesMap[s.Name]; ok {
+			page.Favorites = append(page.Favorites, s)
+		}
+		if v, ok := page.SoundMap[a]; ok {
+			v.Sounds = append(v.Sounds, s)
+			page.SoundMap[a] = v
+		} else {
+			page.SoundMap[a] = SoundCollection{
+				a,
+				[]Sound{s},
 			}
 		}
 	}
@@ -326,50 +333,6 @@ func indexPage(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
-}
-
-func loadSound(name string) ([][]byte, error) {
-
-	var buffer [][]byte
-
-	file, err := os.Open(path.Join("sounds", name+".dca"))
-	if err != nil {
-		return buffer, err
-	}
-
-	var opuslen int16
-
-	for {
-		// Read opus frame length from dca file.
-		err = binary.Read(file, binary.LittleEndian, &opuslen)
-
-		// If this is the end of the file, just return.
-		if err == io.EOF || err == io.ErrUnexpectedEOF {
-			err := file.Close()
-			if err != nil {
-				return buffer, fmt.Errorf("Error reading frame length?: %v", err)
-			}
-			return buffer, nil
-		}
-
-		if err != nil {
-			return buffer, err
-		}
-
-		// Read encoded pcm from dca file.
-		InBuf := make([]byte, opuslen)
-		err = binary.Read(file, binary.LittleEndian, &InBuf)
-
-		// Should not be any end of file errors
-		if err != nil {
-			return buffer, fmt.Errorf("Error reading pcm: %v", err)
-		}
-
-		// Append encoded pcm data to the buffer.
-		buffer = append(buffer, InBuf)
-	}
-
-	return buffer, nil
 }
 
 func saveSound(file multipart.File, filename, soundname string) error {

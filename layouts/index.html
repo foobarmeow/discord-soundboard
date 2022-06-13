@@ -24,33 +24,29 @@
             .nav a:active { color: red; text-decoration: none;}
             .nav a:link { color: black; text-decoration: none;}
 
-			.wrapper {
-			}
-
-			.favorites {
-				float: left;
-			}
-			.favorites ul {
+			.column {
 				display: flex;
 				flex-flow: column;
+				overflow: scroll;
+				height: 100%;
 			}
 
-			.sounds {
-				display: flex;
-				flex-flow: row wrap;
-			}
-
-			#sounds-table {
+			.sounds h1 {
 				padding: 10px;
 			}
 
-			.sound-cell {
-				padding: 2px 20px;
+			.sounds ul {
+				scroll-snap-align: start;
 			}
 
-			.wrapper ul {
-				margin: 0;
-				padding: 0;
+			.sound-group {
+				display: flex;
+				box-shadow: 0 10px 20px rgba(0,0,0,0.19), 0 6px 6px rgba(0,0,0,0.23);
+				background: #fff;
+				border-radius: 2px;
+				width: 300px;
+				padding: 21px;
+				margin: 0.25rem;
 			}
 
             .sound {
@@ -79,9 +75,9 @@
             <a href='/upload'>Upload Sound</a>
             <input id="filter" style="float:right" type="text" placeholder="Filter Sounds" />
         </div>
-		<div class="wrapper">
+		<div style="display: flex; height: 100%">
 			{{ if gt (len .Favorites) 0 }} 
-			<div class="favorites">
+			<div class="column">
 				<span class="favorites-header">Favorites</span>
 				<ul>
 				{{ range .Favorites }}
@@ -93,14 +89,20 @@
 				</ul>
 			</div>
 			{{ end }}
-			<table id="sounds-table">
-			{{ range .Sounds }}
-				<tr onclick="play('{{ .Name }}')" class="sound">
-					<td class="sound-cell">{{ .Name }}</td>
-					<td class="sound-cell" onclick="event.stopPropagation(); favorite('{{ .Name }}')">+</td>
-				</tr>
+			<div class="column">
+			{{ range $a, $s := .SoundMap }}
+				<div class="sound-group">
+					<h1>{{ $a }}</h1>
+					<ul>
+						{{ range $s.Sounds }}
+							<li onclick="play('{{ .Name }}')" class="sound">
+								<span class="sound-cell">{{ .Name }}</span>
+								<span class="sound-cell" onclick="event.stopPropagation(); favorite('{{ .Name }}')">+</span>
+							</li>
+						{{ end }}
+					</ul>
+				</div>
 			{{ end }}
-			</table>
 		</div>
         <script>
             function play(name) {
